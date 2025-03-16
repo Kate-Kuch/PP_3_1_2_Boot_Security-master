@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>User Page</title>
+</head>
+<body>
+
+<h1>Личный кабинет</h1>
+
+<p>Добро пожаловать, <span sec:authentication="name"></span>!</p>
+
+<h2>Информация о пользователе:</h2>
+<ul>
+    <li><strong>Имя пользователя:</strong> <span sec:authentication="principal.username"></span></li>
+    <li><strong>Роли:</strong>
+        <ul>
+            <li th:each="role : ${#authentication.authorities}" th:text="${role.authority}"></li>
+        </ul>
+    </li>
+</ul>
+
+<form th:action="@{/logout}" method="post">
+    <button type="submit">Выйти</button>
+</form>
+
+</body>
+</html>
+
+
