@@ -2,19 +2,32 @@ package ru.kata.spring.boot_security.demo.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.repository.RoleRepository;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class RoleService {
 
     private final RoleRepository roleRepository;
 
-    @Autowired
     public RoleService(RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
+    }
+
+    public Optional<Role> findById(Long id) {
+        return roleRepository.findById(id);
+    }
+
+    public List<Role> findAll() {
+        return roleRepository.findAll();
+    }
+
+    public Optional<Role> findByName(String name) {
+        return roleRepository.findByName(name);
     }
 
     @Transactional
@@ -22,8 +35,7 @@ public class RoleService {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new EntityNotFoundException("Роль не найдена"));
 
-        roleRepository.detachUsersFromRole(role); // Убираем связи
-        roleRepository.delete(role); // Удаляем роль
+        roleRepository.detachUsersFromRole(role);
+        roleRepository.delete(role);
     }
 }
-

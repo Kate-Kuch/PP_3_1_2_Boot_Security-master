@@ -2,28 +2,841 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .top-bar {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .email {
+            font-weight: bold;
+        }
+
+        .roles {
+            color: #ecf0f1;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: none;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .container {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 200px;
+            background-color: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mode-btn {
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            color: #2c3e50;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-left: 3px solid #2980b9;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background-color: #f8f9fa;
+            border-left: 3px solid #bdc3c7;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .content-header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+        }
+
+        .tabs-container {
+            display: flex;
+            background: white;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #7f8c8d;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            background-color: #f8f9fa;
+        }
+
+        .users-table {
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background-color: #ecf0f1;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .edit-btn {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .edit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        /* Модальные окна */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            min-width: 500px;
+            max-width: 600px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #ecf0f1;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 20px;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .modal-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 30px;
+            max-height: calc(90vh - 140px);
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .user-info-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .info-label {
+            font-weight: bold;
+            width: 100px;
+            color: #2c3e50;
+        }
+
+        .info-value {
+            flex: 1;
+            color: #34495e;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group select[multiple] {
+            height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        .close-btn {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .close-btn:hover {
+            background: #7f8c8d;
+        }
+
+        .save-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .save-btn:hover {
+            background: #219653;
+        }
+
+        .delete-confirm-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .delete-confirm-btn:hover {
+            background: #c0392b;
+        }
+
+        /* Панель создания пользователя */
+        .create-user-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .create-user-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Стили для User Panel */
+        .user-panel-content {
+            display: none;
+        }
+
+        .user-info-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .user-info-table h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ecf0f1;
+            padding-bottom: 10px;
+            padding: 20px 20px 10px 20px;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .user-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .user-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+            color: #34495e;
+        }
+
+        .user-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+
+        .role-admin {
+            background-color: #e8f4fd;
+            color: #3498db;
+        }
+
+        .role-user {
+            background-color: #e8f6f3;
+            color: #27ae60;
+        }
+    </style>
 </head>
 <body>
-<h1>Админ-панель</h1>
-<p>Имя администратора: <span th:text="${#authentication.principal.username}"></span></p>
+<!-- Верхняя темная панель с данными из БД -->
+<div class="top-bar">
+    <div class="user-info">
+        <span class="email" th:text="${currentUser.email}">admin@mail.ru</span>
+        <span class="roles">with roles:
+                <span th:each="role, stat : ${currentUser.roles}"
+                      th:text="${#strings.replace(role.name, 'ROLE_', '')} + (${stat.last} ? '' : ' ')">
+                    ADMIN USER
+                </span>
+            </span>
+    </div>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="logout-btn">Logout</button>
+    </form>
+</div>
 
-<h2>Список пользователей:</h2>
-<table border="1">
-    <tr>
-        <th>ID</th>
-        <th>Имя пользователя</th>
-        <th>Роли</th>
-    </tr>
-    <tr th:each="user : ${users}">
-        <td th:text="${user.id}"></td>  <!-- Ошибка могла быть здесь -->
-        <td th:text="${user.username}"></td>
-        <td th:text="${user.roles}"></td>
-    </tr>
-</table>
+<!-- Основной контейнер -->
+<div class="container">
+    <!-- Левая панель -->
+    <div class="sidebar">
+        <div class="mode-buttons">
+            <button class="mode-btn active" id="adminModeBtn">Admin</button>
+            <button class="mode-btn" id="userModeBtn">User</button>
+        </div>
+    </div>
 
-<form th:action="@{/logout}" method="post">
-    <button type="submit">Выйти</button>
-</form>
+    <!-- Основной контент -->
+    <div class="main-content">
+        <!-- Admin Panel Content -->
+        <div class="admin-panel-content" id="adminPanelContent">
+            <div class="content-header">
+                <h1>Admin panel</h1>
+            </div>
+
+            <!-- Панель вкладок -->
+            <div class="tabs-container">
+                <button class="tab active" id="usersTableTab">Users table</button>
+                <button class="tab" id="newUserTab">New User</button>
+            </div>
+
+            <!-- Панель создания пользователя -->
+            <div class="create-user-panel" id="createUserPanel" style="display: none;">
+                <h2>Create New User</h2>
+                <form th:action="@{/admin/create}" method="post">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First Name</label>
+                            <input type="text" id="firstName" name="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" id="lastName" name="lastName" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="age">Age</label>
+                            <input type="number" id="age" name="age" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="roles">Roles</label>
+                            <select id="roles" name="roles" multiple>
+                                <option th:each="role : ${allRoles}"
+                                        th:value="${role.name}"
+                                        th:text="${#strings.replace(role.name, 'ROLE_', '')}">
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="close-btn" id="cancelCreate">Close</button>
+                        <button type="submit" class="save-btn">Create User</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Таблица пользователей из БД -->
+            <div class="users-section" id="usersSection">
+                <h2>All users</h2>
+                <div class="users-table">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Age</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Edit</th>
+                            <th>Delete</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="user : ${users}">
+                            <td th:text="${user.id}">1</td>
+                            <td th:text="${user.firstName}">First Name</td>
+                            <td th:text="${user.lastName}">Last Name</td>
+                            <td th:text="${user.age}">Age</td>
+                            <td th:text="${user.email}">Email</td>
+                            <td>
+                                        <span th:each="role, stat : ${user.roles}"
+                                              th:text="${#strings.replace(role.name, 'ROLE_', '')} + (${stat.last} ? '' : ' ')">
+                                            Roles
+                                        </span>
+                            </td>
+                            <td>
+                                <button class="edit-btn" th:onclick="|openEditModal(${user.id})|">Edit</button>
+                            </td>
+                            <td>
+                                <button class="delete-btn" th:onclick="|openDeleteModal(${user.id})|">Delete</button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Panel Content -->
+        <div class="user-panel-content" id="userPanelContent">
+            <div class="content-header">
+                <h1>User information-page</h1>
+            </div>
+
+            <div class="user-info-table">
+                <h2>About user</h2>
+                <table class="user-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Age</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td th:text="${currentUser.id}">2</td>
+                        <td th:text="${currentUser.firstName}">admin</td>
+                        <td th:text="${currentUser.lastName}">admin</td>
+                        <td th:text="${currentUser.age}">35</td>
+                        <td th:text="${currentUser.email}">admin@mail.ru</td>
+                        <td>
+                                <span th:each="role, stat : ${currentUser.roles}"
+                                      class="role-badge"
+                                      th:classappend="${#strings.contains(role.name, 'ADMIN')} ? 'role-admin' : 'role-user'">
+                                    <span th:text="${#strings.replace(role.name, 'ROLE_', '')}">ADMIN</span>
+                                </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit user</h3>
+        </div>
+        <div class="modal-content">
+            <form th:action="@{/admin/edit}" method="post" id="editForm">
+                <input type="hidden" name="id" id="editId">
+                <div class="user-info-display">
+                    <div class="info-row">
+                        <span class="info-label">ID:</span>
+                        <span class="info-value" id="displayId"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editFirstName">First name</label>
+                    <input type="text" id="editFirstName" name="firstName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editLastName">Last name</label>
+                    <input type="text" id="editLastName" name="lastName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editAge">Age</label>
+                    <input type="number" id="editAge" name="age" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email</label>
+                    <input type="email" id="editEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">Password</label>
+                    <input type="password" id="editPassword" name="password" placeholder="Leave empty to keep current password">
+                </div>
+                <div class="form-group">
+                    <label for="editRoles">Role</label>
+                    <select id="editRoles" name="roles" multiple>
+                        <option th:each="role : ${allRoles}"
+                                th:value="${role.name}"
+                                th:text="${#strings.replace(role.name, 'ROLE_', '')}">
+                        </option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="close-btn" onclick="closeEditModal()">Close</button>
+            <button type="submit" class="save-btn" form="editForm">Edit</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Delete user</h3>
+        </div>
+        <div class="modal-content">
+            <div class="user-info-display">
+                <div class="info-row">
+                    <span class="info-label">ID:</span>
+                    <span class="info-value" id="deleteId"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">First name:</span>
+                    <span class="info-value" id="deleteFirstName"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last name:</span>
+                    <span class="info-value" id="deleteLastName"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Age:</span>
+                    <span class="info-value" id="deleteAge"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value" id="deleteEmail"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Role:</span>
+                    <span class="info-value" id="deleteRole"></span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="close-btn" onclick="closeDeleteModal()">Close</button>
+            <form th:action="@{/admin/delete}" method="post" style="display: inline;">
+                <input type="hidden" name="id" id="deleteUserId">
+                <button type="submit" class="delete-confirm-btn">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Функционал переключения между Admin и User панелями
+    const adminModeBtn = document.getElementById('adminModeBtn');
+    const userModeBtn = document.getElementById('userModeBtn');
+    const adminPanelContent = document.getElementById('adminPanelContent');
+    const userPanelContent = document.getElementById('userPanelContent');
+
+    // Изначально показываем Admin панель
+    adminPanelContent.style.display = 'block';
+    userPanelContent.style.display = 'none';
+
+    // Обработчики для кнопок переключения
+    adminModeBtn.addEventListener('click', function() {
+        adminModeBtn.classList.add('active');
+        userModeBtn.classList.remove('active');
+        adminPanelContent.style.display = 'block';
+        userPanelContent.style.display = 'none';
+    });
+
+    userModeBtn.addEventListener('click', function() {
+        userModeBtn.classList.add('active');
+        adminModeBtn.classList.remove('active');
+        userPanelContent.style.display = 'block';
+        adminPanelContent.style.display = 'none';
+    });
+
+    // Остальной JavaScript код для работы с вкладками и модальными окнами
+    const usersTableTab = document.getElementById('usersTableTab');
+    const newUserTab = document.getElementById('newUserTab');
+    const createUserPanel = document.getElementById('createUserPanel');
+    const usersSection = document.getElementById('usersSection');
+
+    function switchTab(activeTab, inactiveTab, showPanel, hidePanel) {
+        activeTab.classList.add('active');
+        inactiveTab.classList.remove('active');
+        showPanel.style.display = 'block';
+        hidePanel.style.display = 'none';
+    }
+
+    usersTableTab.addEventListener('click', function() {
+        switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
+    });
+
+    newUserTab.addEventListener('click', function() {
+        switchTab(newUserTab, usersTableTab, createUserPanel, usersSection);
+    });
+
+    document.getElementById('cancelCreate').addEventListener('click', function() {
+        switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
+    });
+
+    // Функции для модальных окон
+    function openEditModal(userId) {
+        fetch('/admin/api/users/' + userId)
+            .then(response => response.json())
+            .then(user => {
+                document.getElementById('editId').value = user.id;
+                document.getElementById('displayId').textContent = user.id;
+                document.getElementById('editFirstName').value = user.firstName;
+                document.getElementById('editLastName').value = user.lastName;
+                document.getElementById('editAge').value = user.age;
+                document.getElementById('editEmail').value = user.email;
+
+                const roleSelect = document.getElementById('editRoles');
+                Array.from(roleSelect.options).forEach(option => {
+                    option.selected = user.roles.some(role => role.name === option.value);
+                });
+
+                document.getElementById('editModal').style.display = 'block';
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    function openDeleteModal(userId) {
+        fetch('/admin/api/users/' + userId)
+            .then(response => response.json())
+            .then(user => {
+                document.getElementById('deleteId').textContent = user.id;
+                document.getElementById('deleteFirstName').textContent = user.firstName;
+                document.getElementById('deleteLastName').textContent = user.lastName;
+                document.getElementById('deleteAge').textContent = user.age;
+                document.getElementById('deleteEmail').textContent = user.email;
+                document.getElementById('deleteRole').textContent = user.roles.map(role =>
+                    role.name.replace('ROLE_', '')
+                ).join(' ');
+
+                document.getElementById('deleteUserId').value = user.id;
+                document.getElementById('deleteModal').style.display = 'block';
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEditModal();
+        }
+    });
+
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDeleteModal();
+        }
+    });
+
+    document.querySelector('form[th\\:action="@{/admin/create}"]').addEventListener('submit', function(e) {
+        setTimeout(() => {
+            switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
+        }, 100);
+    });
+
+    document.querySelector('form[th\\:action="@{/admin/delete}"]').addEventListener('submit', function(e) {
+        if (!confirm('Are you sure you want to delete this user?')) {
+            e.preventDefault();
+        }
+    });
+</script>
 </body>
 </html>

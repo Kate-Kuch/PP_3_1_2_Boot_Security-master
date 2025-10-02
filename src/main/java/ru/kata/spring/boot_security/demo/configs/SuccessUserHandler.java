@@ -1,23 +1,31 @@
 package ru.kata.spring.boot_security.demo.configs;
 
-import jakarta.servlet.ServletException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.web.DefaultRedirectStrategy;
+import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Component
-public class SuccessUserHandler extends SimpleUrlAuthenticationSuccessHandler {
+public class SuccessUserHandler implements AuthenticationSuccessHandler {
+
+    private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
+
     @Override
-    protected void handle(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
-            throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request,
+                                        HttpServletResponse response,
+                                        Authentication authentication) throws IOException {
 
-        String targetUrl = authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority())
-                .anyMatch(role -> role.equals("ROLE_ADMIN")) ? "/admin" : "/user";
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"));
 
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        if (isAdmin) {
+            redirectStrategy.sendRedirect(request, response, "/admin");
+        } else {
+            redirectStrategy.sendRedirect(request, response, "/user");
+        }
     }
 }

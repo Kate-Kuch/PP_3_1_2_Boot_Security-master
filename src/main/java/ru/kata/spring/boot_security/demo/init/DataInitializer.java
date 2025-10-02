@@ -25,25 +25,41 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // Создаем роли, если они еще не существуют
         if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
             roleRepository.save(new Role("ROLE_ADMIN"));
             roleRepository.save(new Role("ROLE_USER"));
         }
 
-        if (userRepository.findByUsername("admin").isEmpty()) {
+        // Создаем администратора, если он еще не существует
+        if (userRepository.findByEmail("admin@mail.ru").isEmpty()) {
             Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseThrow();
             Role userRole = roleRepository.findByName("ROLE_USER").orElseThrow();
 
-            User admin = new User("admin", passwordEncoder.encode("admin123"), Set.of(adminRole, userRole));
+            User admin = new User();
+            admin.setFirstName("Admin");
+            admin.setLastName("AdminLastName");
+            admin.setAge(45);
+            admin.setUsername("admin");
+            admin.setEmail("admin@mail.ru"); // Устанавливаем email
+            admin.setPassword(passwordEncoder.encode("admin123")); // Шифруем пароль
+            admin.setRoles(Set.of(adminRole, userRole)); // Назначаем роли
             userRepository.save(admin);
         }
-        if (userRepository.findByUsername("user").isEmpty()) {
+
+        // Создаем обычного пользователя, если он еще не существует
+        if (userRepository.findByEmail("user@mail.ru").isEmpty()) {
             Role userRole = roleRepository.findByName("ROLE_USER").orElseThrow();
 
-            User user = new User("user", passwordEncoder.encode("user123"), Set.of(userRole));
+            User user = new User();
+            user.setFirstName("User");
+            user.setLastName("UserLastName");
+            user.setAge(30);
+            user.setUsername("user");
+            user.setEmail("user@mail.ru"); // Устанавливаем email
+            user.setPassword(passwordEncoder.encode("user123")); // Шифруем пароль
+            user.setRoles(Set.of(userRole)); // Назначаем роль
             userRepository.save(user);
         }
     }
-
 }
-

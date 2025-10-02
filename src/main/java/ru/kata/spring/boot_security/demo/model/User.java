@@ -3,31 +3,49 @@ package ru.kata.spring.boot_security.demo.model;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import jakarta.persistence.*;
+
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "username"))
+@Table(name = "users")
 public class User implements UserDetails {
 
-    @Setter
-    @Getter
     @Id
+    @Getter
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String username;
+    @Getter
+    @Setter
+    private String firstName;
+
+    @Getter
+    @Setter
+    private String lastName;
+
+    @Getter
+    @Setter
+    private int age;
+
+    @Getter
+    @Setter
+    private String email;
+
+    @Getter
+    @Setter
+    private String password;
 
     @Setter
-    @Column(nullable = false)
-    private String password;  // Храним зашифрованный пароль
+    private String username;
 
+    @Getter
+    @Setter
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "users_roles",
@@ -36,68 +54,37 @@ public class User implements UserDetails {
     )
     private Set<Role> roles;
 
-    public User() {}
-
-    public User(String username, String password, Set<Role> roles) {
-        this.username = username;
-        this.password = password;
-        this.roles = roles;
-    }
-
     @Override
-    public Collection<Role> getAuthorities() {
-        return roles;
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Преобразуем роли в GrantedAuthority
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public String getUsername() {
-        return username;
+        return email; // Используем email как username
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return true; // Аккаунт не просрочен
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return true; // Аккаунт не заблокирован
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return true; // Пароль не просрочен
     }
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return true; // Аккаунт активен
     }
 
-    public Collection<? extends GrantedAuthority> getRoles() {
-        return roles;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        User user = (User) o;
-        return Objects.equals(id, user.id) && Objects.equals(username, user.username);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, username);
-    }
-
-    @Override
-    public String toString() {
-        return "User{id=" + id + ", username='" + username + "', roles=" + roles + "}";
-    }
 }
