@@ -61,7 +61,7 @@ public class AdminController {
         user.setEmail(email);
         user.setPassword(password);
 
-        userService.createUser(user, roles);
+        userService.save(user, roles);
         return "redirect:/admin";
     }
 
@@ -95,7 +95,7 @@ public class AdminController {
             }
             user.setRoles(userRoles);
 
-            userService.updateUser(user);
+            userService.update(user);
         }
 
         return "redirect:/admin";
@@ -103,13 +103,13 @@ public class AdminController {
 
     @PostMapping("/delete")
     public String deleteUser(@RequestParam Long id) {
-        userService.deleteUser(id);
+        userService.deleteById(id);
         return "redirect:/admin";
     }
 
     // REST endpoint для AJAX запросов
     @GetMapping("/api/users/{id}")
-
+    @ResponseBody
     public User getUser(@PathVariable Long id) {
         return userService.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
