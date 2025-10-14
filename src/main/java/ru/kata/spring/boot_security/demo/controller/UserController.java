@@ -9,32 +9,24 @@ import org.springframework.web.bind.annotation.*;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.service.UserService;
 
-import java.util.Optional;
-
 
 @Controller
 @RequestMapping("/user")
 public class UserController {
 
+    private final UserService userService;
+
     @Autowired
-    private UserService userService;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping
-    public String getUserPage(Model model) {
-        // Получаем email текущего пользователя из SecurityContext
+    public String userPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();  // Это email, если используется Spring Security
-
-        // Получаем пользователя по email
-        Optional<User> user = userService.findByEmail(email);
-
-        // Если пользователь найден, передаем его в модель
-        if (user.isPresent()) {
-            model.addAttribute("user", user.get()); // Передаем сам объект User
-        } else {
-            model.addAttribute("error", "Пользователь не найден.");
-        }
-
-        return "user";  // Возвращаем страницу user.html
+        String email = authentication.getName();
+        User user = userService.getUserByEmail(email);
+        model.addAttribute("user", user);
+        return "user";
     }
 }

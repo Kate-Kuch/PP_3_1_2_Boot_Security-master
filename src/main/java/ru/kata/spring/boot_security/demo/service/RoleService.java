@@ -6,8 +6,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RoleService {
-    List<Role> findAll();
-    Optional<Role> findByName(String name);
-    Role save(Role role);
+
+    List<Role> getAllRoles();
+
+    Optional<Role> getRoleByName(String name);
+
+    Role saveRole(Role role);
+
+    List<Role> getRolesByIds(List<Long> roleIds);
+
     void deleteById(Long id);
 }

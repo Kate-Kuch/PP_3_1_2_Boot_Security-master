@@ -626,7 +626,8 @@
         </div>
         <div class="modal-content">
             <form th:action="@{/admin/edit}" method="post" id="editForm">
-                <input type="hidden" name="id" id="editId">
+                <input type="hidden" name="userId" id="editUserId">
+
                 <div class="user-info-display">
                     <div class="info-row">
                         <span class="info-label">ID:</span>
@@ -770,7 +771,8 @@
         fetch('/admin/api/users/' + userId)
             .then(response => response.json())
             .then(user => {
-                document.getElementById('editId').value = user.id;
+                document.getElementById('editUserId').value = user.id;
+
                 document.getElementById('displayId').textContent = user.id;
                 document.getElementById('editFirstName').value = user.firstName;
                 document.getElementById('editLastName').value = user.lastName;
