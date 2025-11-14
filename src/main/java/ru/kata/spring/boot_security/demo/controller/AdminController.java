@@ -7,15 +7,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.service.RoleService;
 import ru.kata.spring.boot_security.demo.service.UserService;
-
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 
 @Controller
@@ -46,7 +40,7 @@ public class AdminController {
     }
 
     @GetMapping("/api/users/{id}")
-    @ResponseBody
+
     public User getUserForEdit(@PathVariable Long id) {
         return userService.getUserById(id);
     }
@@ -60,27 +54,11 @@ public class AdminController {
                              @RequestParam String password,
                              @RequestParam(value = "roles", required = false) String[] roles) {
 
-        User user = new User();
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
-        user.setAge(age);
-        user.setEmail(email);
-        user.setPassword(password);
-
-        if (roles != null && roles.length > 0) {
-            Set<Role> userRoles = Arrays.stream(roles)
-                    .map(roleName -> roleService.getRoleByName(roleName))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toSet());
-            user.setRoles(userRoles);
-        }
-
-        userService.saveUser(user);
+        userService.createUser(firstName, lastName, age, email, password, roles);
         return "redirect:/admin";
     }
 
-    // Редактирование пользователя - БЕЗ setId
+    // Редактирование пользователя
     @PostMapping("/edit")
     public String editUser(@RequestParam Long userId,
                            @RequestParam String firstName,
@@ -90,31 +68,7 @@ public class AdminController {
                            @RequestParam String password,
                            @RequestParam(value = "roles", required = false) String[] roles) {
 
-        // Получаем существующего пользователя по ID
-        User existingUser = userService.getUserById(userId);
-
-        // Обновляем поля
-        existingUser.setFirstName(firstName);
-        existingUser.setLastName(lastName);
-        existingUser.setAge(age);
-        existingUser.setEmail(email);
-
-        // Обновляем пароль только если он не пустой
-        if (password != null && !password.trim().isEmpty()) {
-            existingUser.setPassword(password);
-        }
-
-        // Обновляем роли
-        if (roles != null && roles.length > 0) {
-            Set<Role> userRoles = Arrays.stream(roles)
-                    .map(roleName -> roleService.getRoleByName(roleName))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toSet());
-            existingUser.setRoles(userRoles);
-        }
-
-        userService.updateUser(existingUser);
+        userService.updateUser(userId, firstName, lastName, age, email, password, roles);
         return "redirect:/admin";
     }
 
