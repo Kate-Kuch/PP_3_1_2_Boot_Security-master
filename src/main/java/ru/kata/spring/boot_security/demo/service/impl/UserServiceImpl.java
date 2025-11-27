@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +21,12 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
+
+    // Важно: добавить self-инжектирование для обхода ограничения Spring AOP
+    private UserService self;
+
+    // Объект для синхронизации по email (для предотвращения race condition)
+    private final Map<String, Object> emailLocks = new ConcurrentHashMap<>();
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, RoleService roleService) {
@@ -49,24 +56,89 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User createUser(String firstName, String lastName, int age, String email,
-                           String password, String[] roles) {
-        User user = new User();
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
-        user.setAge(age);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
 
-        setUserRoles(user, roles);
+    @Override
+    public User saveUser(User user) {
+        // Для обратной совместимости - проверяем дублирование email
+        if (user.getId() == null) {
+            // Новый пользователь - проверяем email
+            // Используем self вместо this для вызова через прокси
+            if (self.existsByEmail(user.getEmail())) {
+                throw new IllegalArgumentException("Пользователь с email " + user.getEmail() + " уже существует");
+            }
+        } else {
+            // Существующий пользователь - проверяем, не занят ли email другим пользователем
+            User existingUser = self.getUserById(user.getId());
+            if (!existingUser.getEmail().equals(user.getEmail()) && self.existsByEmail(user.getEmail())) {
+                throw new IllegalArgumentException("Пользователь с email " + user.getEmail() + " уже существует");
+            }
+        }
+
+        // Шифруем пароль если он не зашифрован
+        if (user.getPassword() != null && !user.getPassword().startsWith("$2a$")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
 
         return userRepository.save(user);
     }
 
     @Override
+    public User createUser(String firstName, String lastName, int age, String email,
+                           String password, String[] roles) {
+
+        // Синхронизируем по email чтобы избежать race condition
+        Object lock = emailLocks.computeIfAbsent(email.toLowerCase(), k -> new Object());
+
+        synchronized (lock) {
+            try {
+                // ПРОВЕРКА НА СУЩЕСТВОВАНИЕ ПОЛЬЗОВАТЕЛЯ С ТАКИМ EMAIL
+                // Используем self вместо this
+                if (self.existsByEmail(email)) {
+                    throw new IllegalArgumentException("Пользователь с email " + email + " уже существует");
+                }
+
+                User user = new User();
+                user.setFirstName(firstName);
+                user.setLastName(lastName);
+                user.setAge(age);
+                user.setEmail(email);
+                user.setPassword(passwordEncoder.encode(password));
+
+                setUserRoles(user, roles);
+
+                return userRepository.save(user);
+            } finally {
+                // Очищаем lock чтобы не накапливать в памяти
+                emailLocks.remove(email.toLowerCase());
+            }
+        }
+    }
+
+    @Override
     public User updateUser(Long userId, String firstName, String lastName, int age,
                            String email, String password, String[] roles) {
-        User existingUser = getUserById(userId);
+        // Используем self вместо this
+        User existingUser = self.getUserById(userId);
+
+        // Если email меняется, проверяем новый email с синхронизацией
+        if (!existingUser.getEmail().equals(email)) {
+            Object lock = emailLocks.computeIfAbsent(email.toLowerCase(), k -> new Object());
+
+            synchronized (lock) {
+                try {
+                    // Используем self вместо this
+                    if (self.existsByEmail(email)) {
+                        throw new IllegalArgumentException("Пользователь с email " + email + " уже существует");
+                    }
+                } finally {
+                    emailLocks.remove(email.toLowerCase());
+                }
+            }
+        }
 
         existingUser.setFirstName(firstName);
         existingUser.setLastName(lastName);
@@ -85,25 +157,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Long id) {
-        User user = getUserById(id);
+        // Используем self вместо this
+        User user = self.getUserById(id);
         userRepository.delete(user);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean existsByEmail(String email) {
-        return userRepository.findByEmail(email).isPresent();
-    }
-
-    @Override
-    public User saveUser(User user) {
-        if (user.getPassword() != null && !user.getPassword().startsWith("$2a$")) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-        }
-        return userRepository.save(user);
-    }
-
-    //Вспомогательный метод для установки ролей пользователя
+    // Вспомогательный метод для установки ролей пользователя
     private void setUserRoles(User user, String[] roles) {
         if (roles != null && roles.length > 0) {
             Set<Role> userRoles = Arrays.stream(roles)
@@ -113,7 +172,9 @@ public class UserServiceImpl implements UserService {
                     .collect(Collectors.toSet());
             user.setRoles(userRoles);
         } else {
-            user.setRoles(new HashSet<>());
+            // Устанавливаем роль USER по умолчанию, если роли не указаны
+            roleService.getRoleByName("ROLE_USER")
+                    .ifPresent(role -> user.setRoles(Set.of(role)));
         }
     }
 }

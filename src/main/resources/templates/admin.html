@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <style>
+        /* Все ваши стили остаются без изменений */
         * {
             margin: 0;
             padding: 0;
@@ -445,21 +446,38 @@
             background-color: #e8f6f3;
             color: #27ae60;
         }
+
+        /* Добавляем стили для загрузки */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-<!-- Верхняя темная панель с данными из БД -->
+<!-- Верхняя темная панель -->
 <div class="top-bar">
     <div class="user-info">
-        <span class="email" th:text="${currentUser.email}">admin@mail.ru</span>
-        <span class="roles">with roles:
-                <span th:each="role, stat : ${currentUser.roles}"
-                      th:text="${#strings.replace(role.name, 'ROLE_', '')} + (${stat.last} ? '' : ' ')">
-                    ADMIN USER
-                </span>
-            </span>
+        <span class="email" id="currentUserEmail">Loading...</span>
+        <span class="roles">with roles: <span id="currentUserRoles">Loading...</span></span>
     </div>
-    <form th:action="@{/logout}" method="post">
+    <form action="/logout" method="post">
         <button type="submit" class="logout-btn">Logout</button>
     </form>
 </div>
@@ -491,39 +509,36 @@
             <!-- Панель создания пользователя -->
             <div class="create-user-panel" id="createUserPanel" style="display: none;">
                 <h2>Create New User</h2>
-                <form th:action="@{/admin/create}" method="post">
+                <form id="createUserForm">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="firstName">First Name</label>
-                            <input type="text" id="firstName" name="firstName" required>
+                            <label for="createFirstName">First Name</label>
+                            <input type="text" id="createFirstName" name="firstName" required>
                         </div>
                         <div class="form-group">
-                            <label for="lastName">Last Name</label>
-                            <input type="text" id="lastName" name="lastName" required>
+                            <label for="createLastName">Last Name</label>
+                            <input type="text" id="createLastName" name="lastName" required>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="age">Age</label>
-                            <input type="number" id="age" name="age" required>
+                            <label for="createAge">Age</label>
+                            <input type="number" id="createAge" name="age" required>
                         </div>
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" name="email" required>
+                            <label for="createEmail">Email</label>
+                            <input type="email" id="createEmail" name="email" required>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" name="password" required>
+                            <label for="createPassword">Password</label>
+                            <input type="password" id="createPassword" name="password" required>
                         </div>
                         <div class="form-group">
-                            <label for="roles">Roles</label>
-                            <select id="roles" name="roles" multiple>
-                                <option th:each="role : ${allRoles}"
-                                        th:value="${role.name}"
-                                        th:text="${#strings.replace(role.name, 'ROLE_', '')}">
-                                </option>
+                            <label for="createRoles">Roles</label>
+                            <select id="createRoles" name="roles" multiple>
+                                <!-- Roles will be loaded by JavaScript -->
                             </select>
                         </div>
                     </div>
@@ -534,7 +549,13 @@
                 </form>
             </div>
 
-            <!-- Таблица пользователей из БД -->
+            <!-- Индикатор загрузки -->
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Loading users...</p>
+            </div>
+
+            <!-- Таблица пользователей -->
             <div class="users-section" id="usersSection">
                 <h2>All users</h2>
                 <div class="users-table">
@@ -551,26 +572,8 @@
                             <th>Delete</th>
                         </tr>
                         </thead>
-                        <tbody>
-                        <tr th:each="user : ${users}">
-                            <td th:text="${user.id}">1</td>
-                            <td th:text="${user.firstName}">First Name</td>
-                            <td th:text="${user.lastName}">Last Name</td>
-                            <td th:text="${user.age}">Age</td>
-                            <td th:text="${user.email}">Email</td>
-                            <td>
-                                        <span th:each="role, stat : ${user.roles}"
-                                              th:text="${#strings.replace(role.name, 'ROLE_', '')} + (${stat.last} ? '' : ' ')">
-                                            Roles
-                                        </span>
-                            </td>
-                            <td>
-                                <button class="edit-btn" th:onclick="|openEditModal(${user.id})|">Edit</button>
-                            </td>
-                            <td>
-                                <button class="delete-btn" th:onclick="|openDeleteModal(${user.id})|">Delete</button>
-                            </td>
-                        </tr>
+                        <tbody id="usersTableBody">
+                        <!-- Данные будут загружены через JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -596,21 +599,8 @@
                         <th>Role</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    <tr>
-                        <td th:text="${currentUser.id}">2</td>
-                        <td th:text="${currentUser.firstName}">admin</td>
-                        <td th:text="${currentUser.lastName}">admin</td>
-                        <td th:text="${currentUser.age}">35</td>
-                        <td th:text="${currentUser.email}">admin@mail.ru</td>
-                        <td>
-                                <span th:each="role, stat : ${currentUser.roles}"
-                                      class="role-badge"
-                                      th:classappend="${#strings.contains(role.name, 'ADMIN')} ? 'role-admin' : 'role-user'">
-                                    <span th:text="${#strings.replace(role.name, 'ROLE_', '')}">ADMIN</span>
-                                </span>
-                        </td>
-                    </tr>
+                    <tbody id="currentUserTableBody">
+                    <!-- Данные будут загружены через JavaScript -->
                     </tbody>
                 </table>
             </div>
@@ -618,15 +608,15 @@
     </div>
 </div>
 
-<!-- Модальные окна -->
-<div class="modal-overlay" id="editModal">
+<!-- Модальные окна для редактирования и удаления -->
+<div class="modal-overlay" id="editUserModal">
     <div class="modal">
         <div class="modal-header">
             <h3>Edit user</h3>
         </div>
         <div class="modal-content">
-            <form th:action="@{/admin/edit}" method="post" id="editForm">
-                <input type="hidden" name="userId" id="editUserId">
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
 
                 <div class="user-info-display">
                     <div class="info-row">
@@ -657,22 +647,20 @@
                 <div class="form-group">
                     <label for="editRoles">Role</label>
                     <select id="editRoles" name="roles" multiple>
-                        <option th:each="role : ${allRoles}"
-                                th:value="${role.name}"
-                                th:text="${#strings.replace(role.name, 'ROLE_', '')}">
-                        </option>
+                        <!-- Roles will be loaded by JavaScript -->
                     </select>
                 </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="close-btn" id="cancelEdit">Close</button>
+                    <button type="submit" class="save-btn">Save Changes</button>
+                </div>
             </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="close-btn" onclick="closeEditModal()">Close</button>
-            <button type="submit" class="save-btn" form="editForm">Edit</button>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="deleteModal">
+<div class="modal-overlay" id="deleteUserModal">
     <div class="modal">
         <div class="modal-header">
             <h3>Delete user</h3>
@@ -706,139 +694,13 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="close-btn" onclick="closeDeleteModal()">Close</button>
-            <form th:action="@{/admin/delete}" method="post" style="display: inline;">
-                <input type="hidden" name="id" id="deleteUserId">
-                <button type="submit" class="delete-confirm-btn">Delete</button>
-            </form>
+            <button type="button" class="close-btn" onclick="adminApp.closeDeleteModal()">Close</button>
+            <button type="button" class="delete-confirm-btn" onclick="adminApp.confirmDelete()">Delete User</button>
         </div>
     </div>
 </div>
 
-<script>
-    // Функционал переключения между Admin и User панелями
-    const adminModeBtn = document.getElementById('adminModeBtn');
-    const userModeBtn = document.getElementById('userModeBtn');
-    const adminPanelContent = document.getElementById('adminPanelContent');
-    const userPanelContent = document.getElementById('userPanelContent');
-
-    // Изначально показываем Admin панель
-    adminPanelContent.style.display = 'block';
-    userPanelContent.style.display = 'none';
-
-    // Обработчики для кнопок переключения
-    adminModeBtn.addEventListener('click', function() {
-        adminModeBtn.classList.add('active');
-        userModeBtn.classList.remove('active');
-        adminPanelContent.style.display = 'block';
-        userPanelContent.style.display = 'none';
-    });
-
-    userModeBtn.addEventListener('click', function() {
-        userModeBtn.classList.add('active');
-        adminModeBtn.classList.remove('active');
-        userPanelContent.style.display = 'block';
-        adminPanelContent.style.display = 'none';
-    });
-
-    // Остальной JavaScript код для работы с вкладками и модальными окнами
-    const usersTableTab = document.getElementById('usersTableTab');
-    const newUserTab = document.getElementById('newUserTab');
-    const createUserPanel = document.getElementById('createUserPanel');
-    const usersSection = document.getElementById('usersSection');
-
-    function switchTab(activeTab, inactiveTab, showPanel, hidePanel) {
-        activeTab.classList.add('active');
-        inactiveTab.classList.remove('active');
-        showPanel.style.display = 'block';
-        hidePanel.style.display = 'none';
-    }
-
-    usersTableTab.addEventListener('click', function() {
-        switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
-    });
-
-    newUserTab.addEventListener('click', function() {
-        switchTab(newUserTab, usersTableTab, createUserPanel, usersSection);
-    });
-
-    document.getElementById('cancelCreate').addEventListener('click', function() {
-        switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
-    });
-
-    // Функции для модальных окон
-    function openEditModal(userId) {
-        fetch('/admin/api/users/' + userId)
-            .then(response => response.json())
-            .then(user => {
-                document.getElementById('editUserId').value = user.id;
-
-                document.getElementById('displayId').textContent = user.id;
-                document.getElementById('editFirstName').value = user.firstName;
-                document.getElementById('editLastName').value = user.lastName;
-                document.getElementById('editAge').value = user.age;
-                document.getElementById('editEmail').value = user.email;
-
-                const roleSelect = document.getElementById('editRoles');
-                Array.from(roleSelect.options).forEach(option => {
-                    option.selected = user.roles.some(role => role.name === option.value);
-                });
-
-                document.getElementById('editModal').style.display = 'block';
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
-    }
-
-    function openDeleteModal(userId) {
-        fetch('/admin/api/users/' + userId)
-            .then(response => response.json())
-            .then(user => {
-                document.getElementById('deleteId').textContent = user.id;
-                document.getElementById('deleteFirstName').textContent = user.firstName;
-                document.getElementById('deleteLastName').textContent = user.lastName;
-                document.getElementById('deleteAge').textContent = user.age;
-                document.getElementById('deleteEmail').textContent = user.email;
-                document.getElementById('deleteRole').textContent = user.roles.map(role =>
-                    role.name.replace('ROLE_', '')
-                ).join(' ');
-
-                document.getElementById('deleteUserId').value = user.id;
-                document.getElementById('deleteModal').style.display = 'block';
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    function closeDeleteModal() {
-        document.getElementById('deleteModal').style.display = 'none';
-    }
-
-    document.getElementById('editModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeEditModal();
-        }
-    });
-
-    document.getElementById('deleteModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeDeleteModal();
-        }
-    });
-
-    document.querySelector('form[th\\:action="@{/admin/create}"]').addEventListener('submit', function(e) {
-        setTimeout(() => {
-            switchTab(usersTableTab, newUserTab, usersSection, createUserPanel);
-        }, 100);
-    });
-
-    document.querySelector('form[th\\:action="@{/admin/delete}"]').addEventListener('submit', function(e) {
-        if (!confirm('Are you sure you want to delete this user?')) {
-            e.preventDefault();
-        }
-    });
-</script>
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
 </body>
 </html>
