@@ -22,9 +22,6 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
 
-    // Важно: добавить self-инжектирование для обхода ограничения Spring AOP
-    private UserService self;
-
     // Объект для синхронизации по email (для предотвращения race condition)
     private final Map<String, Object> emailLocks = new ConcurrentHashMap<>();
 
@@ -63,17 +60,19 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User saveUser(User user) {
-        // Для обратной совместимости - проверяем дублирование email
+        // Проверяем email напрямую через репозиторий
         if (user.getId() == null) {
-            // Новый пользователь - проверяем email
-            // Используем self вместо this для вызова через прокси
-            if (self.existsByEmail(user.getEmail())) {
+            // Новый пользователь
+            if (userRepository.existsByEmail(user.getEmail())) {
                 throw new IllegalArgumentException("Пользователь с email " + user.getEmail() + " уже существует");
             }
         } else {
-            // Существующий пользователь - проверяем, не занят ли email другим пользователем
-            User existingUser = self.getUserById(user.getId());
-            if (!existingUser.getEmail().equals(user.getEmail()) && self.existsByEmail(user.getEmail())) {
+            // Существующий пользователь
+            User existingUser = userRepository.findById(user.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + user.getId()));
+
+            if (!existingUser.getEmail().equals(user.getEmail()) &&
+                    userRepository.existsByEmail(user.getEmail())) {
                 throw new IllegalArgumentException("Пользователь с email " + user.getEmail() + " уже существует");
             }
         }
@@ -95,9 +94,8 @@ public class UserServiceImpl implements UserService {
 
         synchronized (lock) {
             try {
-                // ПРОВЕРКА НА СУЩЕСТВОВАНИЕ ПОЛЬЗОВАТЕЛЯ С ТАКИМ EMAIL
-                // Используем self вместо this
-                if (self.existsByEmail(email)) {
+                // Проверка на существование пользователя с таким email
+                if (userRepository.existsByEmail(email)) {
                     throw new IllegalArgumentException("Пользователь с email " + email + " уже существует");
                 }
 
@@ -107,6 +105,7 @@ public class UserServiceImpl implements UserService {
                 user.setAge(age);
                 user.setEmail(email);
                 user.setPassword(passwordEncoder.encode(password));
+                user.setUsername(email); // Обычно username = email
 
                 setUserRoles(user, roles);
 
@@ -121,8 +120,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public User updateUser(Long userId, String firstName, String lastName, int age,
                            String email, String password, String[] roles) {
-        // Используем self вместо this
-        User existingUser = self.getUserById(userId);
+
+        User existingUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
         // Если email меняется, проверяем новый email с синхронизацией
         if (!existingUser.getEmail().equals(email)) {
@@ -130,8 +130,7 @@ public class UserServiceImpl implements UserService {
 
             synchronized (lock) {
                 try {
-                    // Используем self вместо this
-                    if (self.existsByEmail(email)) {
+                    if (userRepository.existsByEmail(email)) {
                         throw new IllegalArgumentException("Пользователь с email " + email + " уже существует");
                     }
                 } finally {
@@ -144,6 +143,7 @@ public class UserServiceImpl implements UserService {
         existingUser.setLastName(lastName);
         existingUser.setAge(age);
         existingUser.setEmail(email);
+        existingUser.setUsername(email); // Обновляем username тоже
 
         // Обновляем пароль только если он не пустой
         if (password != null && !password.trim().isEmpty()) {
@@ -157,8 +157,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Long id) {
-        // Используем self вместо this
-        User user = self.getUserById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         userRepository.delete(user);
     }
 
